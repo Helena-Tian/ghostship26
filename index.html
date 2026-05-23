@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>嗜血博士 · 幽灵船副本 | 无限流互动游戏</title>
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-        }
+        * { box-sizing: border-box; user-select: none; }
         body {
             background: #1a100c;
             background-image: radial-gradient(circle at 10% 20%, #2c1e16, #0f0a07);
@@ -76,11 +73,7 @@
             backdrop-filter: blur(2px);
             border: 1px solid #ad8b62;
         }
-        .stat {
-            background: #00000055;
-            padding: 4px 12px;
-            border-radius: 40px;
-        }
+        .stat { background: #00000055; padding: 4px 12px; border-radius: 40px; }
         .scene-card {
             background: #fef1e0;
             border-radius: 28px;
@@ -105,14 +98,9 @@
             padding: 12px 14px;
             border-radius: 20px;
             margin-bottom: 18px;
-            font-style: normal;
             border: 1px solid #e7cfb5;
         }
-        .options {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+        .options { display: flex; flex-direction: column; gap: 12px; }
         .option-btn {
             background: #302418;
             border: none;
@@ -126,12 +114,8 @@
             cursor: pointer;
             transition: 0.1s linear;
             box-shadow: 0 2px 5px black;
-            letter-spacing: 0.5px;
         }
-        .option-btn:hover {
-            background: #5c3f2b;
-            transform: scale(0.98);
-        }
+        .option-btn:hover { background: #5c3f2b; transform: scale(0.98); }
         .clues-area {
             background: #e6d4bd;
             border-radius: 28px;
@@ -141,66 +125,15 @@
             color: #2e241d;
             border: 1px solid #c6a87f;
         }
-        .clue-title {
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid #b4916a;
-            margin-bottom: 8px;
-            padding-bottom: 4px;
-        }
-        .clue-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin: 8px 0;
-        }
-        .clue-badge {
-            background: #36281d;
-            color: #fae6cf;
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.7rem;
-        }
-        .combo-btn {
-            background: #987b58;
-            border: none;
-            margin-top: 8px;
-            padding: 6px 14px;
-            border-radius: 30px;
-            font-weight: bold;
-            cursor: pointer;
-            font-family: monospace;
-        }
-        .reset-btn {
-            background: #423524;
-            width: 100%;
-            margin-top: 20px;
-            text-align: center;
-            color: #f0dbc0;
-            border: none;
-            padding: 10px;
-            border-radius: 40px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        footer {
-            font-size: 0.65rem;
-            text-align: center;
-            color: #9b845e;
-            margin-top: 10px;
-        }
-        button:active {
-            transform: scale(0.97);
-        }
-        .special-note {
-            font-size: 0.7rem;
-            margin-top: 8px;
-            color: #9b4b2c;
-        }
-        .ending-text {
-            white-space: pre-line;
-        }
+        .clue-title { font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #b4916a; margin-bottom: 8px; padding-bottom: 4px; }
+        .clue-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+        .clue-badge { background: #36281d; color: #fae6cf; padding: 4px 12px; border-radius: 40px; font-size: 0.7rem; }
+        .combo-btn { background: #987b58; border: none; margin-top: 8px; padding: 6px 14px; border-radius: 30px; font-weight: bold; cursor: pointer; }
+        .reset-btn { background: #423524; width: 100%; margin-top: 20px; color: #f0dbc0; border: none; padding: 10px; border-radius: 40px; font-weight: bold; cursor: pointer; }
+        footer { font-size: 0.65rem; text-align: center; color: #9b845e; margin-top: 10px; }
+        button:active { transform: scale(0.97); }
+        .special-note { font-size: 0.7rem; margin-top: 8px; color: #9b4b2c; }
+        .ending-text { white-space: pre-line; }
     </style>
 </head>
 <body>
@@ -236,7 +169,7 @@
         ap: 6,
         clues: [],      // 存储线索对象 { id, name }
         usedCombos: [], // 已使用的组合标识
-        currentScene: "intro", // 从序章开始
+        currentScene: "intro",
         gameOver: false,
     };
 
@@ -280,7 +213,30 @@
         handwriting_same: "同一人笔迹",
     };
 
-    // 组合规则 (a, b 线索id)
+    // 重要线索：获取时自动增加真相值 (通常每个+1)
+    const truthClues = [
+        "ring", "shelley", "martha_name", "edward_gift", "waltz_stain",
+        "lip_print", "gramophone", "menu_secret", "apology", "smile_corpse",
+        "scalpel", "paper_report", "heart_ring", "self_id", "split_id",
+        "equation", "reflection", "double_confess", "rosemary_meaning",
+        "date_memento", "erased_face", "shared_table", "martha_sacrifice",
+        "boiler_confess", "substitute_know", "usurp_evidence", "same_person",
+        "never_hate", "last_waltz", "family_lie", "handwriting_same"
+    ];
+
+    function hasClue(id) { return gameState.clues.some(c => c.id === id); }
+    
+    function addClue(id) {
+        if (hasClue(id)) return false;
+        gameState.clues.push({ id: id, name: clueNames[id] || id });
+        // 重要线索增加真相值
+        if (truthClues.includes(id)) {
+            gameState.truth += 1;
+        }
+        return true;
+    }
+
+    // 组合规则
     const comboPairs = [
         { a: "ring", b: "paper_report", desc: "戒指 + 碎纸报告" },
         { a: "lip_print", b: "phantom_elena", desc: "唇印 + 伊莲娜幻影" },
@@ -291,15 +247,8 @@
         { a: "gramophone", b: "last_waltz", desc: "留声机音乐 + 最后的华尔兹" },
         { a: "martha_sacrifice", b: "martha_name", desc: "玛莎的牺牲 + 风铃" },
         { a: "boiler_confess", b: "double_confess", desc: "锅炉房的忏悔 + 双重谋杀的自白" },
-        { a: "martha_name", b: "family_lie", desc: "玛莎的真名 + 谎言" }  // 额外增加
+        { a: "martha_name", b: "family_lie", desc: "玛莎的真名 + 谎言" }
     ];
-
-    function hasClue(id) { return gameState.clues.some(c => c.id === id); }
-    function addClue(id) {
-        if (hasClue(id)) return false;
-        gameState.clues.push({ id: id, name: clueNames[id] || id });
-        return true;
-    }
 
     function tryCombo() {
         let any = false;
@@ -329,8 +278,7 @@
             clueContainer.innerHTML = gameState.clues.map(c => `<span class="clue-badge">${c.name}</span>`).join("");
         }
         if (!gameState.gameOver) {
-            // 每次更新UI后，重新渲染当前场景（但避免递归）
-            renderCurrentScene();
+            renderCurrentScene(); // 重新渲染当前场景
         }
     }
 
@@ -348,7 +296,6 @@
             triggerEnding("evil");
             return;
         }
-        // 若进入记忆孤岛但truth<5，强制沉眠结局
         if (gameState.currentScene === "scene08" && gameState.truth < 5 && !gameState.gameOver) {
             triggerEnding("ocean");
         }
@@ -395,7 +342,6 @@
     function consumeAp() {
         if (gameState.ap <= 0) {
             if (gameState.truth < 5) triggerEnding("cycle");
-            else return false;
             return false;
         }
         gameState.ap--;
@@ -403,7 +349,6 @@
         return true;
     }
 
-    // 场景渲染
     function renderCurrentScene() {
         if (gameState.gameOver) return;
         const scene = gameState.currentScene;
@@ -423,7 +368,7 @@
     function gotoMap() { gameState.currentScene = "map"; renderCurrentScene(); }
     function gotoScene(id) { gameState.currentScene = id; renderCurrentScene(); }
 
-    // 序章：进入幽灵船
+    // 序章
     function renderIntro() {
         let html = `<div class="scene-card"><div class="scene-title">🕯️ 进入幽灵船</div>
         <div class="scene-desc">你睁开眼，发现自己站在一艘废弃邮轮的甲板上。海面漆黑，风里带着咸涩。远处隐约有灯光，但分不清是船灯还是鬼火。<br><br>一个声音在你脑中回响：“找到真相，否则永远无法离开。”</div>
@@ -468,19 +413,6 @@
         });
     }
 
-    // 辅助执行选项效果
-    function applyEffects(effects, nextScene, additionalCheck) {
-        if (effects.san) gameState.san += effects.san;
-        if (effects.truth) gameState.truth += effects.truth;
-        if (effects.clue) addClue(effects.clue);
-        if (effects.forceScene) nextScene = effects.forceScene;
-        if (gameState.san <= 0) { triggerEnding("mad"); return; }
-        gameState.currentScene = nextScene;
-        renderCurrentScene();
-        updateUI();
-        checkAutoEnding();
-    }
-
     // 锅炉房
     function renderScene01() {
         let html = `<div class="scene-card"><div class="scene-title">🔥 锅炉房</div>
@@ -504,7 +436,6 @@
             gotoMap();
         };
         document.getElementById("optD").onclick = () => gotoMap();
-        // 特殊触发 (迷迭香意义+真相≥2)
         if (hasClue("rosemary_meaning") && gameState.truth >= 2 && !hasClue("martha_sacrifice")) {
             addClue("martha_sacrifice");
             gameState.san -= 3;
@@ -542,7 +473,7 @@
         updateUI();
     }
 
-    // 甲板 (修改文字)
+    // 甲板（夜风咸涩，线索名称已改）
     function renderScene03() {
         let html = `<div class="scene-card"><div class="scene-title">🌊 甲板</div>
         <div class="scene-desc">夜风咸涩。栏杆挂着贝壳风铃，下方系着褪色口红。地面有水渍未干，拖把靠在栏杆边。</div>
@@ -555,7 +486,7 @@
         document.getElementById("dynamicScene").innerHTML = html;
         document.getElementById("optA").onclick = () => { addClue("martha_name"); gameState.san--; gotoMap(); };
         document.getElementById("optB").onclick = () => { addClue("edward_gift"); gotoMap(); };
-        document.getElementById("optC").onclick = () => { addClue("waltz_stain"); gotoMap(); }; // 小丑之王的回忆
+        document.getElementById("optC").onclick = () => { addClue("waltz_stain"); gotoMap(); };
         document.getElementById("optD").onclick = () => {
             if (Math.random() < 0.5) { addClue("martha_call"); gameState.san -= 2; alert("幻影出现，被拖入记忆孤岛"); gameState.currentScene = "scene08"; renderCurrentScene(); }
             else alert("什么也没发生");
@@ -582,7 +513,7 @@
         document.getElementById("dynamicScene").innerHTML = html;
         document.getElementById("optA").onclick = () => { addClue("lip_print"); gotoMap(); };
         document.getElementById("optB").onclick = () => { addClue("gramophone"); gameState.san--; gotoMap(); };
-        document.getElementById("optC").onclick = () => { addClue("menu_secret"); gotoMap(); }; // 走私酒
+        document.getElementById("optC").onclick = () => { addClue("menu_secret"); gotoMap(); };
         document.getElementById("optD").onclick = () => { addClue("apology"); gameState.san--; alert("水渍变成SORRY，坠入孤岛"); gameState.currentScene = "scene08"; renderCurrentScene(); };
         if (hasClue("edward_gift") && !hasClue("same_person")) { addClue("same_person"); alert("唇印与口红吻合，获得【同一个人】"); }
         if (hasClue("martha_name") && !hasClue("never_hate")) { addClue("never_hate"); alert("酒水单上浮现小字：她从不恨任何人"); }
@@ -613,7 +544,7 @@
         updateUI();
     }
 
-    // 地牢 (修改描述)
+    // 地牢
     function renderScene06() {
         let html = `<div class="scene-card"><div class="scene-title">⛓️ 地牢/精神病院</div>
         <div class="scene-desc">潮湿石牢，铁栏杆锈迹。墙角老鼠钻洞。墙上粉笔涂鸦，"爱德华""乔纳森""诺斯费拉图…什么意思呢？</div>
@@ -644,7 +575,7 @@
         updateUI();
     }
 
-    // 温馨小家 (修改)
+    // 温馨小家
     function renderScene07() {
         let html = `<div class="scene-card"><div class="scene-title">🏠 温馨小家</div>
         <div class="scene-desc">暖色沙发，婴儿床。餐桌上有蔬菜牛肉汤和一把新鲜迷迭香。墙上照片中男人的脸被水渍模糊。</div>
@@ -677,11 +608,11 @@
         </div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
         const truth = gameState.truth, san = gameState.san;
-        document.getElementById("optA").onclick = () => { if(truth>=4 && truth<=7) triggerEnding("waltz"); else alert("条件不足"); };
-        document.getElementById("optB").onclick = () => { if(truth>=4 && truth<=7) triggerEnding("dinner"); else alert("条件不足"); };
+        document.getElementById("optA").onclick = () => { if(truth>=4 && truth<=7) triggerEnding("waltz"); else alert("条件不足 (需要真相4-7)"); };
+        document.getElementById("optB").onclick = () => { if(truth>=4 && truth<=7) triggerEnding("dinner"); else alert("条件不足 (需要真相4-7)"); };
         document.getElementById("optC").onclick = () => { if(Math.random()<0.5) triggerEnding("ocean"); else alert("爱德华将你拉回，重新选择"); };
-        document.getElementById("optD").onclick = () => { if(truth>=8 && san>=4) triggerEnding("true"); else alert("真相不足或理智过低"); };
-        // 隐藏结局
+        document.getElementById("optD").onclick = () => { if(truth>=8 && san>=4) triggerEnding("true"); else alert("真相不足(需≥8)或理智过低"); };
+        // 隐藏结局按钮
         if (hasClue("martha_sacrifice") && hasClue("martha_name") && hasClue("edward_gift")) {
             let btnE = document.createElement("button");
             btnE.innerText = "E. 将玛莎的牺牲、风铃、口红抛向水面";
@@ -708,7 +639,6 @@
     });
     document.getElementById("comboActionBtn").addEventListener("click", () => tryCombo());
 
-    // 启动
     renderCurrentScene();
     updateUI();
 </script>
