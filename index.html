@@ -201,10 +201,6 @@
         .ending-text {
             white-space: pre-line;
         }
-        .disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
     </style>
 </head>
 <body>
@@ -238,12 +234,13 @@
         san: 10,
         truth: 0,
         ap: 6,
-        clues: [],
-        usedCombos: [],
-        currentScene: "intro",
+        clues: [],      // 存储线索对象 { id, name }
+        usedCombos: [], // 已使用的组合标识
+        currentScene: "intro", // 从序章开始
         gameOver: false,
     };
 
+    // 线索库 (id -> 显示名)
     const clueNames = {
         ring: "烧焦的戒指",
         bloodstain: "人形血迹",
@@ -283,6 +280,7 @@
         handwriting_same: "同一人笔迹",
     };
 
+    // 组合规则 (a, b 线索id)
     const comboPairs = [
         { a: "ring", b: "paper_report", desc: "戒指 + 碎纸报告" },
         { a: "lip_print", b: "phantom_elena", desc: "唇印 + 伊莲娜幻影" },
@@ -293,6 +291,7 @@
         { a: "gramophone", b: "last_waltz", desc: "留声机音乐 + 最后的华尔兹" },
         { a: "martha_sacrifice", b: "martha_name", desc: "玛莎的牺牲 + 风铃" },
         { a: "boiler_confess", b: "double_confess", desc: "锅炉房的忏悔 + 双重谋杀的自白" },
+        { a: "martha_name", b: "family_lie", desc: "玛莎的真名 + 谎言" }  // 额外增加
     ];
 
     function hasClue(id) { return gameState.clues.some(c => c.id === id); }
@@ -329,7 +328,10 @@
         else {
             clueContainer.innerHTML = gameState.clues.map(c => `<span class="clue-badge">${c.name}</span>`).join("");
         }
-        if (!gameState.gameOver) renderCurrentScene();
+        if (!gameState.gameOver) {
+            // 每次更新UI后，重新渲染当前场景（但避免递归）
+            renderCurrentScene();
+        }
     }
 
     function checkAutoEnding() {
@@ -346,6 +348,7 @@
             triggerEnding("evil");
             return;
         }
+        // 若进入记忆孤岛但truth<5，强制沉眠结局
         if (gameState.currentScene === "scene08" && gameState.truth < 5 && !gameState.gameOver) {
             triggerEnding("ocean");
         }
@@ -392,6 +395,7 @@
     function consumeAp() {
         if (gameState.ap <= 0) {
             if (gameState.truth < 5) triggerEnding("cycle");
+            else return false;
             return false;
         }
         gameState.ap--;
@@ -399,6 +403,7 @@
         return true;
     }
 
+    // 场景渲染
     function renderCurrentScene() {
         if (gameState.gameOver) return;
         const scene = gameState.currentScene;
@@ -418,7 +423,7 @@
     function gotoMap() { gameState.currentScene = "map"; renderCurrentScene(); }
     function gotoScene(id) { gameState.currentScene = id; renderCurrentScene(); }
 
-    // 序章
+    // 序章：进入幽灵船
     function renderIntro() {
         let html = `<div class="scene-card"><div class="scene-title">🕯️ 进入幽灵船</div>
         <div class="scene-desc">你睁开眼，发现自己站在一艘废弃邮轮的甲板上。海面漆黑，风里带着咸涩。远处隐约有灯光，但分不清是船灯还是鬼火。<br><br>一个声音在你脑中回响：“找到真相，否则永远无法离开。”</div>
@@ -443,12 +448,12 @@
         if (gameState.truth >= 3 || hasClue("ring")) {
             html += `<button class="option-btn" data-scene="scene06">⛓️ 地牢/精神病院</button>`;
         } else {
-            html += `<button class="option-btn disabled" disabled>⛓️ 地牢（需真相≥3或戒指）</button>`;
+            html += `<button class="option-btn disabled" disabled style="opacity:0.6">⛓️ 地牢（需真相≥3或戒指）</button>`;
         }
         if (hasClue("shelley") || hasClue("rosemary_meaning")) {
             html += `<button class="option-btn" data-scene="scene07">🏠 温馨小家</button>`;
         } else {
-            html += `<button class="option-btn disabled" disabled>🏠 小家（需迷迭香或雪莱的诗）</button>`;
+            html += `<button class="option-btn disabled" disabled style="opacity:0.6">🏠 小家（需迷迭香或雪莱的诗）</button>`;
         }
         html += `</div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
@@ -463,6 +468,19 @@
         });
     }
 
+    // 辅助执行选项效果
+    function applyEffects(effects, nextScene, additionalCheck) {
+        if (effects.san) gameState.san += effects.san;
+        if (effects.truth) gameState.truth += effects.truth;
+        if (effects.clue) addClue(effects.clue);
+        if (effects.forceScene) nextScene = effects.forceScene;
+        if (gameState.san <= 0) { triggerEnding("mad"); return; }
+        gameState.currentScene = nextScene;
+        renderCurrentScene();
+        updateUI();
+        checkAutoEnding();
+    }
+
     // 锅炉房
     function renderScene01() {
         let html = `<div class="scene-card"><div class="scene-title">🔥 锅炉房</div>
@@ -474,26 +492,23 @@
             <button id="optD">D. 离开</button>
         </div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
-        document.getElementById("optA").onclick = () => {
-            if (hasClue("ring")) alert("你已经拿过戒指了。");
-            else { addClue("ring"); gameState.san--; gameState.truth++; alert("获得线索【烧焦的戒指】。理智-1，真相+1"); }
-            gotoMap();
-        };
+        document.getElementById("optA").onclick = () => { addClue("ring"); gameState.san--; updateUI(); gotoMap(); };
         document.getElementById("optB").onclick = () => {
-            if (hasClue("scalpel")) { addClue("bloodstain"); gameState.san--; alert("获得线索【人形血迹】。理智-1"); }
-            else alert("没有手术刀，无法深入分析，无线索。");
+            if (hasClue("scalpel")) { addClue("bloodstain"); gameState.san--; alert("获得人形血迹"); }
+            else alert("没有手术刀，无法深入");
             gotoMap();
         };
         document.getElementById("optC").onclick = () => {
-            if (Math.random() < 0.5) { addClue("button"); gameState.san--; alert("正面！获得线索【船员纽扣】，但被轻微烫伤，理智-1"); }
-            else { gameState.san -= 2; alert("背面！锅炉喷出火焰，你严重烫伤，理智-2，无线索。"); }
+            if (Math.random() < 0.5) { addClue("button"); gameState.san--; alert("正面！获得船员纽扣，轻微烫伤"); }
+            else { gameState.san -= 2; alert("背面！严重烫伤"); }
             gotoMap();
         };
         document.getElementById("optD").onclick = () => gotoMap();
+        // 特殊触发 (迷迭香意义+真相≥2)
         if (hasClue("rosemary_meaning") && gameState.truth >= 2 && !hasClue("martha_sacrifice")) {
             addClue("martha_sacrifice");
             gameState.san -= 3;
-            alert("幻影出现：玛莎穿着白裙站在锅炉边缘，回眸一笑后跃入炉中。获得线索【玛莎的牺牲】，理智-3。你被强制拖入记忆孤岛！");
+            alert("幻影出现：玛莎穿着白裙跃入炉中，获得【玛莎的牺牲】。你被拖入记忆孤岛！");
             gameState.currentScene = "scene08";
             renderCurrentScene();
         }
@@ -511,23 +526,23 @@
             <button id="optD">D. 离开</button>
         </div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
-        document.getElementById("optA").onclick = () => { addClue("shelley"); gameState.truth++; alert("获得线索【雪莱的诗】。真相+1"); gotoMap(); };
-        document.getElementById("optB").onclick = () => { addClue("illness"); alert("获得线索【伊莲娜的病】。"); gotoMap(); };
+        document.getElementById("optA").onclick = () => { addClue("shelley"); gotoMap(); };
+        document.getElementById("optB").onclick = () => { addClue("illness"); gotoMap(); };
         document.getElementById("optC").onclick = () => {
-            if (Math.random() < 0.5) { addClue("phantom_elena"); gameState.san -= 2; alert("镜中浮现伊莲娜流泪的脸。获得线索【伊莲娜的幻影】，理智-2"); }
-            else { gameState.san -= 3; alert("你看到自己的脸逐渐腐烂，恐惧逃离，理智-3"); }
+            if (Math.random() < 0.5) { addClue("phantom_elena"); gameState.san -= 2; alert("镜中浮现伊莲娜的脸"); }
+            else { gameState.san -= 3; alert("看到腐烂的脸，恐惧逃离"); }
             gotoMap();
         };
         document.getElementById("optD").onclick = () => gotoMap();
         if (hasClue("lip_print") && !hasClue("substitute_know")) {
             addClue("substitute_know");
             gameState.san--;
-            alert("镜子中浮现玛莎的半张笑脸，获得线索【替代品的自知】，理智-1");
+            alert("镜子中浮现玛莎半张笑脸，获得【替代品的自知】");
         }
         updateUI();
     }
 
-    // 甲板
+    // 甲板 (修改文字)
     function renderScene03() {
         let html = `<div class="scene-card"><div class="scene-title">🌊 甲板</div>
         <div class="scene-desc">夜风咸涩。栏杆挂着贝壳风铃，下方系着褪色口红。地面有水渍未干，拖把靠在栏杆边。</div>
@@ -538,18 +553,18 @@
             <button id="optD">D. 沿着甲板往前走</button>
         </div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
-        document.getElementById("optA").onclick = () => { addClue("martha_name"); gameState.san--; gameState.truth++; alert("获得线索【玛莎的真名】。理智-1，真相+1"); gotoMap(); };
-        document.getElementById("optB").onclick = () => { addClue("edward_gift"); gameState.truth++; alert("获得线索【爱德华的礼物】。真相+1"); gotoMap(); };
-        document.getElementById("optC").onclick = () => { addClue("waltz_stain"); gameState.truth++; alert("获得线索【小丑之王的回忆】。真相+1"); gotoMap(); };
+        document.getElementById("optA").onclick = () => { addClue("martha_name"); gameState.san--; gotoMap(); };
+        document.getElementById("optB").onclick = () => { addClue("edward_gift"); gotoMap(); };
+        document.getElementById("optC").onclick = () => { addClue("waltz_stain"); gotoMap(); }; // 小丑之王的回忆
         document.getElementById("optD").onclick = () => {
-            if (Math.random() < 0.5) { addClue("martha_call"); gameState.san -= 2; alert("你看到幻影，玛莎回头喊：“记得我的名字！”获得线索【玛莎的呼唤】，理智-2，你被拖入记忆孤岛"); gameState.currentScene = "scene08"; renderCurrentScene(); }
-            else alert("什么也没发生。");
+            if (Math.random() < 0.5) { addClue("martha_call"); gameState.san -= 2; alert("幻影出现，被拖入记忆孤岛"); gameState.currentScene = "scene08"; renderCurrentScene(); }
+            else alert("什么也没发生");
         };
         if (hasClue("gramophone") && !hasClue("last_waltz")) {
-            addClue("last_waltz"); gameState.san--; alert("跳舞的幻影浮现，获得线索【最后的华尔兹】，理智-1");
+            addClue("last_waltz"); gameState.san--; alert("浮现跳舞幻影，获得最后的华尔兹");
         }
         if (hasClue("martha_name") && hasClue("edward_gift") && !hasClue("family_lie")) {
-            addClue("family_lie"); alert("将口红涂在风铃贝壳上，浮现日期和“他是我的家人”，获得线索【谎言】");
+            addClue("family_lie"); alert("口红涂在风铃上，浮现日期和‘他是我的家人’，获得【谎言】");
         }
         updateUI();
     }
@@ -565,12 +580,12 @@
             <button id="optD">D. 拿起拖把拖地</button>
         </div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
-        document.getElementById("optA").onclick = () => { addClue("lip_print"); gameState.truth++; alert("获得线索【唇印】。真相+1"); gotoMap(); };
-        document.getElementById("optB").onclick = () => { addClue("gramophone"); gameState.san--; gameState.truth++; alert("获得线索【留声机音乐】，理智-1，真相+1"); gotoMap(); };
-        document.getElementById("optC").onclick = () => { addClue("menu_secret"); gameState.truth++; alert("获得线索【走私酒】。真相+1"); gotoMap(); };
-        document.getElementById("optD").onclick = () => { addClue("apology"); gameState.san--; alert("水渍变成“SORRY”，获得线索【未说出口的道歉】，理智-1，你感到眩晕，坠入记忆孤岛"); gameState.currentScene = "scene08"; renderCurrentScene(); };
-        if (hasClue("edward_gift") && !hasClue("same_person")) { addClue("same_person"); alert("对比唇印，与口红完全吻合。获得线索【同一个人】"); }
-        if (hasClue("martha_name") && !hasClue("never_hate")) { addClue("never_hate"); alert("酒水单上浮现小字：“她从不恨任何人”。获得线索【她从不恨任何人】"); }
+        document.getElementById("optA").onclick = () => { addClue("lip_print"); gotoMap(); };
+        document.getElementById("optB").onclick = () => { addClue("gramophone"); gameState.san--; gotoMap(); };
+        document.getElementById("optC").onclick = () => { addClue("menu_secret"); gotoMap(); }; // 走私酒
+        document.getElementById("optD").onclick = () => { addClue("apology"); gameState.san--; alert("水渍变成SORRY，坠入孤岛"); gameState.currentScene = "scene08"; renderCurrentScene(); };
+        if (hasClue("edward_gift") && !hasClue("same_person")) { addClue("same_person"); alert("唇印与口红吻合，获得【同一个人】"); }
+        if (hasClue("martha_name") && !hasClue("never_hate")) { addClue("never_hate"); alert("酒水单上浮现小字：她从不恨任何人"); }
         updateUI();
     }
 
@@ -585,20 +600,20 @@
             <button id="optD">D. 离开</button>
         </div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
-        document.getElementById("optA").onclick = () => { addClue("smile_corpse"); gameState.san -= 2; alert("获得线索【无名女尸】，理智-2。尸体睁眼：“帮我找到他的名字。”"); if(confirm("点头进入记忆孤岛？")){ gameState.currentScene="scene08"; renderCurrentScene(); } else gotoMap(); };
-        document.getElementById("optB").onclick = () => { addClue("scalpel"); gameState.truth++; alert("获得线索【手术刀】。真相+1"); gotoMap(); };
-        document.getElementById("optC").onclick = () => { addClue("paper_report"); gameState.truth++; alert("获得线索【碎纸报告】。真相+1"); gotoMap(); };
+        document.getElementById("optA").onclick = () => { addClue("smile_corpse"); gameState.san -= 2; alert("尸体睁眼：帮我找到他的名字"); if(confirm("点头进入记忆孤岛？")){ gameState.currentScene="scene08"; renderCurrentScene(); } else gotoMap(); };
+        document.getElementById("optB").onclick = () => { addClue("scalpel"); gotoMap(); };
+        document.getElementById("optC").onclick = () => { addClue("paper_report"); gotoMap(); };
         document.getElementById("optD").onclick = () => gotoMap();
         if (hasClue("shelley") && hasClue("paper_report") && !hasClue("handwriting_same")) {
-            addClue("handwriting_same"); alert("笔迹比对一致，诗与碎纸出自同一人。获得线索【同一人笔迹】");
+            addClue("handwriting_same"); alert("笔迹一致，获得同一人笔迹");
         }
         if (hasClue("scalpel") && gameState.truth >= 2 && !hasClue("heart_ring")) {
-            addClue("heart_ring"); gameState.san -= 3; alert("解剖台出现心脏，切开后找到戒指，获得线索【心脏中的戒指】，理智-3，你被拖入地牢"); gameState.currentScene = "scene06"; renderCurrentScene();
+            addClue("heart_ring"); gameState.san -= 3; alert("解剖台出现心脏，切开后找到戒指，被拖入地牢"); gameState.currentScene = "scene06"; renderCurrentScene();
         }
         updateUI();
     }
 
-    // 地牢
+    // 地牢 (修改描述)
     function renderScene06() {
         let html = `<div class="scene-card"><div class="scene-title">⛓️ 地牢/精神病院</div>
         <div class="scene-desc">潮湿石牢，铁栏杆锈迹。墙角老鼠钻洞。墙上粉笔涂鸦，"爱德华""乔纳森""诺斯费拉图…什么意思呢？</div>
@@ -610,26 +625,26 @@
         document.getElementById("dynamicScene").innerHTML = html;
         document.getElementById("optA").onclick = () => {
             let choice = confirm("声音问：你叫什么名字？\n确定=爱德华，取消=乔纳森");
-            if (choice) { addClue("self_id"); gameState.san--; gameState.truth++; alert("回答爱德华，获得线索【自我认同】，理智-1，真相+1"); }
-            else { addClue("split_id"); gameState.san -= 2; gameState.truth++; alert("回答乔纳森，获得线索【人格分裂】，理智-2，真相+1"); }
+            if (choice) { addClue("self_id"); gameState.san--; }
+            else { addClue("split_id"); gameState.san -= 2; }
             gotoMap();
         };
-        document.getElementById("optB").onclick = () => { addClue("equation"); gameState.truth++; alert("获得线索【涂鸦的秘密】。真相+1"); gotoMap(); };
-        document.getElementById("optC").onclick = () => { addClue("reflection"); gameState.san -= 3; gameState.truth++; alert("获得线索【书中的自白】，理智-3，真相+1，你被拉入记忆孤岛"); gameState.currentScene = "scene08"; renderCurrentScene(); };
+        document.getElementById("optB").onclick = () => { addClue("equation"); gotoMap(); };
+        document.getElementById("optC").onclick = () => { addClue("reflection"); gameState.san -= 3; alert("书中文字将你拉入孤岛"); gameState.currentScene = "scene08"; renderCurrentScene(); };
         if (hasClue("scalpel") && !gameState.usedCombos.includes("scalpel_cut")) {
             gameState.usedCombos.push("scalpel_cut");
             gameState.san -= 4;
-            alert("你用手术刀割开束缚，鲜血直流，理智-4，坠入孤岛");
+            alert("你用手术刀割开束缚，鲜血直流，坠入孤岛");
             gameState.currentScene = "scene08";
             renderCurrentScene();
         }
         if (hasClue("bloodstain") && hasClue("boiler_confess") && !hasClue("double_confess")) {
-            addClue("double_confess"); alert("墙上浮现新文字：“我杀了伯爵，因为嫉妒；我杀了玛莎，因为懦弱。”获得线索【双重谋杀的自白】");
+            addClue("double_confess"); alert("墙上浮现新文字，获得双重谋杀的自白");
         }
         updateUI();
     }
 
-    // 温馨小家
+    // 温馨小家 (修改)
     function renderScene07() {
         let html = `<div class="scene-card"><div class="scene-title">🏠 温馨小家</div>
         <div class="scene-desc">暖色沙发，婴儿床。餐桌上有蔬菜牛肉汤和一把新鲜迷迭香。墙上照片中男人的脸被水渍模糊。</div>
@@ -640,12 +655,12 @@
             <button id="optD">D. 坐下来休息然后睡着</button>
         </div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
-        document.getElementById("optA").onclick = () => { addClue("rosemary_meaning"); gameState.truth++; alert("获得线索【迷迭香的意义】。真相+1"); gotoMap(); };
-        document.getElementById("optB").onclick = () => { addClue("date_memento"); gameState.truth++; alert("获得线索【甜蜜的生活】。真相+1"); gotoMap(); };
-        document.getElementById("optC").onclick = () => { addClue("erased_face"); gameState.truth++; alert("获得线索【被抹去的面孔】。真相+1"); if(confirm("你意识到那个男人可能是自己，前往记忆孤岛？")) { gameState.currentScene="scene08"; renderCurrentScene(); } else gotoMap(); };
+        document.getElementById("optA").onclick = () => { addClue("rosemary_meaning"); gotoMap(); };
+        document.getElementById("optB").onclick = () => { addClue("date_memento"); gotoMap(); };
+        document.getElementById("optC").onclick = () => { addClue("erased_face"); if(confirm("意识到那个男人可能是自己，前往记忆孤岛？")) { gameState.currentScene="scene08"; renderCurrentScene(); } else gotoMap(); };
         document.getElementById("optD").onclick = () => { alert("你睡着了，醒来时在锅炉房"); gameState.currentScene = "scene01"; renderCurrentScene(); };
         if (hasClue("martha_sacrifice") && !hasClue("shared_table")) {
-            addClue("shared_table"); gameState.san--; alert("玛莎的幻影坐在餐桌旁，获得线索【共享的餐桌】，理智-1");
+            addClue("shared_table"); gameState.san--; alert("玛莎的幻影坐在餐桌旁");
         }
         updateUI();
     }
@@ -662,10 +677,11 @@
         </div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
         const truth = gameState.truth, san = gameState.san;
-        document.getElementById("optA").onclick = () => { if(truth>=4 && truth<=7) triggerEnding("waltz"); else alert("条件不足：需要真相值4-7"); };
-        document.getElementById("optB").onclick = () => { if(truth>=4 && truth<=7) triggerEnding("dinner"); else alert("条件不足：需要真相值4-7"); };
+        document.getElementById("optA").onclick = () => { if(truth>=4 && truth<=7) triggerEnding("waltz"); else alert("条件不足"); };
+        document.getElementById("optB").onclick = () => { if(truth>=4 && truth<=7) triggerEnding("dinner"); else alert("条件不足"); };
         document.getElementById("optC").onclick = () => { if(Math.random()<0.5) triggerEnding("ocean"); else alert("爱德华将你拉回，重新选择"); };
-        document.getElementById("optD").onclick = () => { if(truth>=8 && san>=4) { alert("你大喊：“你是爱德华，也是乔纳森！你们是一个人！”"); triggerEnding("true"); } else alert("真相不足（需≥8）或理智过低（需≥4）"); };
+        document.getElementById("optD").onclick = () => { if(truth>=8 && san>=4) triggerEnding("true"); else alert("真相不足或理智过低"); };
+        // 隐藏结局
         if (hasClue("martha_sacrifice") && hasClue("martha_name") && hasClue("edward_gift")) {
             let btnE = document.createElement("button");
             btnE.innerText = "E. 将玛莎的牺牲、风铃、口红抛向水面";
@@ -682,6 +698,7 @@
         }
     }
 
+    // 重置
     document.getElementById("resetGameBtn").addEventListener("click", () => {
         gameState = {
             san: 10, truth: 0, ap: 6, clues: [], usedCombos: [], currentScene: "intro", gameOver: false
@@ -691,6 +708,7 @@
     });
     document.getElementById("comboActionBtn").addEventListener("click", () => tryCombo());
 
+    // 启动
     renderCurrentScene();
     updateUI();
 </script>
