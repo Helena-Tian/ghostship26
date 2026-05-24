@@ -128,12 +128,14 @@
         .clue-title { font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #b4916a; margin-bottom: 8px; padding-bottom: 4px; }
         .clue-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .clue-badge { background: #36281d; color: #fae6cf; padding: 4px 12px; border-radius: 40px; font-size: 0.7rem; }
-        .combo-btn { background: #987b58; border: none; margin-top: 8px; padding: 6px 14px; border-radius: 30px; font-weight: bold; cursor: pointer; }
+        .combo-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .combo-badge { background: #5a3e2a; color: #ffefcf; padding: 4px 12px; border-radius: 40px; font-size: 0.7rem; font-style: italic; }
         .reset-btn { background: #423524; width: 100%; margin-top: 20px; color: #f0dbc0; border: none; padding: 10px; border-radius: 40px; font-weight: bold; cursor: pointer; }
         footer { font-size: 0.65rem; text-align: center; color: #9b845e; margin-top: 10px; }
         button:active { transform: scale(0.97); }
         .special-note { font-size: 0.7rem; margin-top: 8px; color: #9b4b2c; }
         .ending-text { white-space: pre-line; }
+        .memory-btn { background: #6b2e1e; border: 2px solid #e6b17e; color: #ffe0b5; font-weight: bold; text-align: center; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -153,8 +155,9 @@
         <div class="clues-area">
             <div class="clue-title">📜 线索记录</div>
             <div id="clueListArea" class="clue-list">暂无线索</div>
-            <button id="comboActionBtn" class="combo-btn">✨ 组合线索 (+2真相)</button>
-            <div class="special-note">💡 组合规则：同时拥有特定成对线索可获得真相+2，每个组合限一次。</div>
+            <div class="clue-title" style="margin-top: 12px;">✨ 已组合</div>
+            <div id="comboListArea" class="combo-list">暂无</div>
+            <div class="special-note">💡 获得新线索时会自动组合，真相值自动增加。</div>
         </div>
         <button id="resetGameBtn" class="reset-btn">🔄 重开游戏</button>
         <footer>选择消耗行动点，理智归零或真相过低将触发结局。真相≥5可进入记忆孤岛。</footer>
@@ -167,76 +170,27 @@
         san: 10,
         truth: 0,
         ap: 6,
-        clues: [],      // 存储线索对象 { id, name }
-        usedCombos: [], // 已使用的组合标识
+        clues: [],
+        usedCombos: [],     // 存储已组合的描述字符串（用于显示）
         currentScene: "intro",
         gameOver: false,
     };
 
-    // 线索库 (id -> 显示名)
     const clueNames = {
-        ring: "烧焦的戒指",
-        bloodstain: "人形血迹",
-        button: "船员纽扣",
-        shelley: "雪莱的诗",
-        illness: "伊莲娜的病",
-        phantom_elena: "伊莲娜的幻影",
-        martha_name: "玛莎的真名",
-        edward_gift: "爱德华的礼物",
-        waltz_stain: "小丑之王的回忆",
-        martha_call: "玛莎的呼唤",
-        lip_print: "唇印",
-        gramophone: "留声机音乐",
-        menu_secret: "走私酒",
-        apology: "未说出口的道歉",
-        smile_corpse: "无名女尸",
-        scalpel: "手术刀",
-        paper_report: "碎纸报告",
-        heart_ring: "心脏中的戒指",
-        self_id: "自我认同",
-        split_id: "人格分裂",
-        equation: "涂鸦的秘密",
-        reflection: "书中的自白",
-        double_confess: "双重谋杀的自白",
-        rosemary_meaning: "迷迭香的意义",
-        date_memento: "甜蜜的生活",
-        erased_face: "被抹去的面孔",
-        shared_table: "共享的餐桌",
-        martha_sacrifice: "玛莎的牺牲",
-        boiler_confess: "锅炉房的忏悔",
-        substitute_know: "替代品的自知",
-        usurp_evidence: "盗用身份的证据",
-        same_person: "同一个人",
-        never_hate: "她从不恨任何人",
-        last_waltz: "最后的华尔兹",
-        family_lie: "谎言",
-        handwriting_same: "同一人笔迹",
+        ring: "烧焦的戒指", bloodstain: "人形血迹", button: "船员纽扣", shelley: "雪莱的诗",
+        illness: "伊莲娜的病", phantom_elena: "伊莲娜的幻影", martha_name: "玛莎的真名",
+        edward_gift: "爱德华的礼物", waltz_stain: "小丑之王的回忆", martha_call: "玛莎的呼唤",
+        lip_print: "唇印", gramophone: "留声机音乐", menu_secret: "走私酒", apology: "未说出口的道歉",
+        smile_corpse: "无名女尸", scalpel: "手术刀", paper_report: "碎纸报告", heart_ring: "心脏中的戒指",
+        self_id: "自我认同", split_id: "人格分裂", equation: "涂鸦的秘密", reflection: "书中的自白",
+        double_confess: "双重谋杀的自白", rosemary_meaning: "迷迭香的意义", date_memento: "甜蜜的生活",
+        erased_face: "被抹去的面孔", shared_table: "共享的餐桌", martha_sacrifice: "玛莎的牺牲",
+        boiler_confess: "锅炉房的忏悔", substitute_know: "替代品的自知", usurp_evidence: "盗用身份的证据",
+        same_person: "同一个人", never_hate: "她从不恨任何人", last_waltz: "最后的华尔兹",
+        family_lie: "谎言", handwriting_same: "同一人笔迹"
     };
 
-    // 重要线索：获取时自动增加真相值 (通常每个+1)
-    const truthClues = [
-        "ring", "shelley", "martha_name", "edward_gift", "waltz_stain",
-        "lip_print", "gramophone", "menu_secret", "apology", "smile_corpse",
-        "scalpel", "paper_report", "heart_ring", "self_id", "split_id",
-        "equation", "reflection", "double_confess", "rosemary_meaning",
-        "date_memento", "erased_face", "shared_table", "martha_sacrifice",
-        "boiler_confess", "substitute_know", "usurp_evidence", "same_person",
-        "never_hate", "last_waltz", "family_lie", "handwriting_same"
-    ];
-
-    function hasClue(id) { return gameState.clues.some(c => c.id === id); }
-    
-    function addClue(id) {
-        if (hasClue(id)) return false;
-        gameState.clues.push({ id: id, name: clueNames[id] || id });
-        // 重要线索增加真相值
-        if (truthClues.includes(id)) {
-            gameState.truth += 1;
-        }
-        return true;
-    }
-
-    // 组合规则
+    // 组合定义 (包含描述)
     const comboPairs = [
         { a: "ring", b: "paper_report", desc: "戒指 + 碎纸报告" },
         { a: "lip_print", b: "phantom_elena", desc: "唇印 + 伊莲娜幻影" },
@@ -250,47 +204,67 @@
         { a: "martha_name", b: "family_lie", desc: "玛莎的真名 + 谎言" }
     ];
 
-    function tryCombo() {
+    function hasClue(id) { return gameState.clues.some(c => c.id === id); }
+
+    // 自动组合：检测并增加真相值，同时记录组合到 usedCombos（用于显示）
+    function autoCombo() {
         let any = false;
-        for (let pair of comboPairs) {
-            const key = pair.a + "_" + pair.b;
+        let newCombos = [];
+        for (let p of comboPairs) {
+            const key = p.desc;
             if (gameState.usedCombos.includes(key)) continue;
-            if (hasClue(pair.a) && hasClue(pair.b)) {
+            if (hasClue(p.a) && hasClue(p.b)) {
                 gameState.truth += 2;
                 gameState.usedCombos.push(key);
                 any = true;
-                alert(`✨ 组合成功！ ${pair.desc} → 真相值 +2`);
-                updateUI();
-                checkAutoEnding();
+                newCombos.push(p.desc);
             }
         }
-        if (!any) alert("目前没有可用的线索组合，继续探索吧！");
+        if (any) {
+            alert(`✨ 自动组合成功！\n${newCombos.join("\n")}\n真相值 +${newCombos.length * 2}`);
+            updateUI();
+            checkAutoEnding();
+        }
+    }
+
+    function addClue(id) {
+        if (hasClue(id)) return false;
+        gameState.clues.push({ id: id, name: clueNames[id] || id });
+        // 基础真相值 +1
+        gameState.truth += 1;
         updateUI();
+        autoCombo();   // 自动检测新组合（可能触发多次）
+        return true;
     }
 
     function updateUI() {
         document.getElementById("sanVal").innerText = gameState.san;
         document.getElementById("truthVal").innerText = gameState.truth;
         document.getElementById("apVal").innerText = gameState.ap;
+        // 更新线索显示
         const clueContainer = document.getElementById("clueListArea");
         if (gameState.clues.length === 0) clueContainer.innerHTML = "暂无线索";
-        else {
-            clueContainer.innerHTML = gameState.clues.map(c => `<span class="clue-badge">${c.name}</span>`).join("");
-        }
-        if (!gameState.gameOver) {
-            renderCurrentScene(); // 重新渲染当前场景
-        }
+        else clueContainer.innerHTML = gameState.clues.map(c => `<span class="clue-badge">${c.name}</span>`).join("");
+        // 更新已组合显示
+        const comboContainer = document.getElementById("comboListArea");
+        if (gameState.usedCombos.length === 0) comboContainer.innerHTML = "暂无";
+        else comboContainer.innerHTML = gameState.usedCombos.map(c => `<span class="combo-badge">✨ ${c}</span>`).join("");
+        if (!gameState.gameOver) renderCurrentScene();
     }
 
     function checkAutoEnding() {
         if (gameState.gameOver) return;
-        if (gameState.san <= 0) {
-            triggerEnding("mad");
-            return;
-        }
-        if (gameState.ap <= 0 && gameState.truth < 5) {
-            triggerEnding("cycle");
-            return;
+        if (gameState.san <= 0) { triggerEnding("mad"); return; }
+        if (gameState.ap <= 0) {
+            if (gameState.truth >= 5 && gameState.currentScene !== "scene08") {
+                alert("行动点耗尽，但真相已足够，你被吸入记忆孤岛...");
+                gameState.currentScene = "scene08";
+                renderCurrentScene();
+                return;
+            } else if (gameState.truth < 5) {
+                triggerEnding("cycle");
+                return;
+            }
         }
         if (gameState.truth <= 3 && (gameState.currentScene === "scene06" || gameState.currentScene === "scene08")) {
             triggerEnding("evil");
@@ -306,33 +280,15 @@
         gameState.gameOver = true;
         let endingHtml = "";
         switch(type) {
-            case "waltz":
-                endingHtml = `<div class="scene-card"><div class="scene-title">⚡ 结局：电椅的华尔兹</div><div class="scene-desc ending-text">你坐上电椅，电流化作华尔兹旋律。你死前最后听到的是：“最亮的地方，玛莎，我们到了。”</div></div>`;
-                break;
-            case "dinner":
-                endingHtml = `<div class="scene-card"><div class="scene-title">🍲 结局：永不醒来的晚餐</div><div class="scene-desc ending-text">你回到温馨小家，妻子为你盛汤。碗里的汤永远喝不完——你困在幸福循环中。</div></div>`;
-                break;
-            case "ocean":
-                endingHtml = `<div class="scene-card"><div class="scene-title">🌊 结局：海洋之露的沉眠</div><div class="scene-desc ending-text">你沉入黑色水面，无数鱼群包围你。你成为风铃的一部分，永远摇曳在海面上。</div></div>`;
-                break;
-            case "true":
-                endingHtml = `<div class="scene-card"><div class="scene-title">✨ 真结局：真相的出口</div><div class="scene-desc ending-text">你喊出真相，爱德华与乔纳森融合。幽灵船消失，海面只剩迷迭香飘散。你走出梦境，睁开眼睛——你决定去自首。</div></div>`;
-                break;
-            case "evil":
-                endingHtml = `<div class="scene-card"><div class="scene-title">👻 坏结局：被伯爵吞噬</div><div class="scene-desc ending-text">你无法认清真相，伯爵的怨灵附身。你将永远在船上重复杀人与被杀的循环。</div></div>`;
-                break;
-            case "mad":
-                endingHtml = `<div class="scene-card"><div class="scene-title">🧠 疯癫结局：永远的13号病人</div><div class="scene-desc ending-text">你彻底崩溃，蜷缩在地牢角落，不断重复：“诺斯费拉图……诺斯费拉图……”</div></div>`;
-                break;
-            case "cycle":
-                endingHtml = `<div class="scene-card"><div class="scene-title">🔄 循环结局：又是9月的第三个星期</div><div class="scene-desc ending-text">你没能找到真相，船钟敲响，一切重置。记忆再次被抹去，游戏可以重开。</div></div>`;
-                break;
-            case "soul":
-                endingHtml = `<div class="scene-card"><div class="scene-title">🤝 隐藏结局：灵魂合一</div><div class="scene-desc ending-text">爱德华、玛莎、乔纳森的幻影在海面共舞。你被允许离开，带着他们的祝福。</div></div>`;
-                break;
-            case "newcount":
-                endingHtml = `<div class="scene-card"><div class="scene-title">👑 隐藏结局：成为新的伯爵</div><div class="scene-desc ending-text">你选择取代爱德华，成为新的“伯爵”。你戴上戒指，坐进头等舱，等待下一个无辜的少女。轮回继续。</div></div>`;
-                break;
+            case "waltz": endingHtml = `<div class="scene-card"><div class="scene-title">⚡ 结局：电椅的华尔兹</div><div class="scene-desc ending-text">你坐上电椅，电流化作华尔兹旋律。你死前最后听到的是：“最亮的地方，玛莎，我们到了。”</div></div>`; break;
+            case "dinner": endingHtml = `<div class="scene-card"><div class="scene-title">🍲 结局：永不醒来的晚餐</div><div class="scene-desc ending-text">你回到温馨小家，妻子为你盛汤。碗里的汤永远喝不完——你困在幸福循环中。</div></div>`; break;
+            case "ocean": endingHtml = `<div class="scene-card"><div class="scene-title">🌊 结局：海洋之露的沉眠</div><div class="scene-desc ending-text">你沉入黑色水面，无数鱼群包围你。你成为风铃的一部分，永远摇曳在海面上。</div></div>`; break;
+            case "true": endingHtml = `<div class="scene-card"><div class="scene-title">✨ 真结局：真相的出口</div><div class="scene-desc ending-text">你喊出真相，爱德华与乔纳森融合。幽灵船消失，海面只剩迷迭香飘散。你走出梦境，睁开眼睛——你决定去自首。</div></div>`; break;
+            case "evil": endingHtml = `<div class="scene-card"><div class="scene-title">👻 坏结局：被伯爵吞噬</div><div class="scene-desc ending-text">你无法认清真相，伯爵的怨灵附身。你将永远在船上重复杀人与被杀的循环。</div></div>`; break;
+            case "mad": endingHtml = `<div class="scene-card"><div class="scene-title">🧠 疯癫结局：永远的13号病人</div><div class="scene-desc ending-text">你彻底崩溃，蜷缩在地牢角落，不断重复：“诺斯费拉图……诺斯费拉图……”</div></div>`; break;
+            case "cycle": endingHtml = `<div class="scene-card"><div class="scene-title">🔄 循环结局：又是9月的第三个星期</div><div class="scene-desc ending-text">你没能找到真相，船钟敲响，一切重置。记忆再次被抹去，游戏可以重开。</div></div>`; break;
+            case "soul": endingHtml = `<div class="scene-card"><div class="scene-title">🤝 隐藏结局：灵魂合一</div><div class="scene-desc ending-text">爱德华、玛莎、乔纳森的幻影在海面共舞。你被允许离开，带着他们的祝福。</div></div>`; break;
+            case "newcount": endingHtml = `<div class="scene-card"><div class="scene-title">👑 隐藏结局：成为新的伯爵</div><div class="scene-desc ending-text">你选择取代爱德华，成为新的“伯爵”。你戴上戒指，坐进头等舱，等待下一个无辜的少女。轮回继续。</div></div>`; break;
             default: endingHtml = `<div class="scene-card">游戏结束</div>`;
         }
         document.getElementById("dynamicScene").innerHTML = endingHtml;
@@ -341,7 +297,7 @@
 
     function consumeAp() {
         if (gameState.ap <= 0) {
-            if (gameState.truth < 5) triggerEnding("cycle");
+            checkAutoEnding();
             return false;
         }
         gameState.ap--;
@@ -366,7 +322,6 @@
     }
 
     function gotoMap() { gameState.currentScene = "map"; renderCurrentScene(); }
-    function gotoScene(id) { gameState.currentScene = id; renderCurrentScene(); }
 
     // 序章
     function renderIntro() {
@@ -400,6 +355,9 @@
         } else {
             html += `<button class="option-btn disabled" disabled style="opacity:0.6">🏠 小家（需迷迭香或雪莱的诗）</button>`;
         }
+        if (gameState.truth >= 5 && !gameState.gameOver) {
+            html += `<button id="memoryBtn" class="option-btn memory-btn">🌌 前往记忆孤岛（真相已足）</button>`;
+        }
         html += `</div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
         document.querySelectorAll("[data-scene]").forEach(btn => {
@@ -411,6 +369,14 @@
                 renderCurrentScene();
             });
         });
+        const memoryBtn = document.getElementById("memoryBtn");
+        if (memoryBtn) {
+            memoryBtn.addEventListener("click", () => {
+                if (gameState.gameOver) return;
+                gameState.currentScene = "scene08";
+                renderCurrentScene();
+            });
+        }
     }
 
     // 锅炉房
@@ -424,7 +390,7 @@
             <button id="optD">D. 离开</button>
         </div></div>`;
         document.getElementById("dynamicScene").innerHTML = html;
-        document.getElementById("optA").onclick = () => { addClue("ring"); gameState.san--; updateUI(); gotoMap(); };
+        document.getElementById("optA").onclick = () => { addClue("ring"); gameState.san--; gotoMap(); };
         document.getElementById("optB").onclick = () => {
             if (hasClue("scalpel")) { addClue("bloodstain"); gameState.san--; alert("获得人形血迹"); }
             else alert("没有手术刀，无法深入");
@@ -436,6 +402,7 @@
             gotoMap();
         };
         document.getElementById("optD").onclick = () => gotoMap();
+        // 特殊触发
         if (hasClue("rosemary_meaning") && gameState.truth >= 2 && !hasClue("martha_sacrifice")) {
             addClue("martha_sacrifice");
             gameState.san -= 3;
@@ -443,7 +410,6 @@
             gameState.currentScene = "scene08";
             renderCurrentScene();
         }
-        updateUI();
     }
 
     // 头等舱
@@ -470,10 +436,9 @@
             gameState.san--;
             alert("镜子中浮现玛莎半张笑脸，获得【替代品的自知】");
         }
-        updateUI();
     }
 
-    // 甲板（夜风咸涩，线索名称已改）
+    // 甲板
     function renderScene03() {
         let html = `<div class="scene-card"><div class="scene-title">🌊 甲板</div>
         <div class="scene-desc">夜风咸涩。栏杆挂着贝壳风铃，下方系着褪色口红。地面有水渍未干，拖把靠在栏杆边。</div>
@@ -497,7 +462,6 @@
         if (hasClue("martha_name") && hasClue("edward_gift") && !hasClue("family_lie")) {
             addClue("family_lie"); alert("口红涂在风铃上，浮现日期和‘他是我的家人’，获得【谎言】");
         }
-        updateUI();
     }
 
     // 酒吧
@@ -517,7 +481,6 @@
         document.getElementById("optD").onclick = () => { addClue("apology"); gameState.san--; alert("水渍变成SORRY，坠入孤岛"); gameState.currentScene = "scene08"; renderCurrentScene(); };
         if (hasClue("edward_gift") && !hasClue("same_person")) { addClue("same_person"); alert("唇印与口红吻合，获得【同一个人】"); }
         if (hasClue("martha_name") && !hasClue("never_hate")) { addClue("never_hate"); alert("酒水单上浮现小字：她从不恨任何人"); }
-        updateUI();
     }
 
     // 解剖室
@@ -541,7 +504,6 @@
         if (hasClue("scalpel") && gameState.truth >= 2 && !hasClue("heart_ring")) {
             addClue("heart_ring"); gameState.san -= 3; alert("解剖台出现心脏，切开后找到戒指，被拖入地牢"); gameState.currentScene = "scene06"; renderCurrentScene();
         }
-        updateUI();
     }
 
     // 地牢
@@ -572,7 +534,6 @@
         if (hasClue("bloodstain") && hasClue("boiler_confess") && !hasClue("double_confess")) {
             addClue("double_confess"); alert("墙上浮现新文字，获得双重谋杀的自白");
         }
-        updateUI();
     }
 
     // 温馨小家
@@ -593,7 +554,6 @@
         if (hasClue("martha_sacrifice") && !hasClue("shared_table")) {
             addClue("shared_table"); gameState.san--; alert("玛莎的幻影坐在餐桌旁");
         }
-        updateUI();
     }
 
     // 记忆孤岛
@@ -612,7 +572,7 @@
         document.getElementById("optB").onclick = () => { if(truth>=4 && truth<=7) triggerEnding("dinner"); else alert("条件不足 (需要真相4-7)"); };
         document.getElementById("optC").onclick = () => { if(Math.random()<0.5) triggerEnding("ocean"); else alert("爱德华将你拉回，重新选择"); };
         document.getElementById("optD").onclick = () => { if(truth>=8 && san>=4) triggerEnding("true"); else alert("真相不足(需≥8)或理智过低"); };
-        // 隐藏结局按钮
+        // 隐藏结局
         if (hasClue("martha_sacrifice") && hasClue("martha_name") && hasClue("edward_gift")) {
             let btnE = document.createElement("button");
             btnE.innerText = "E. 将玛莎的牺牲、风铃、口红抛向水面";
@@ -637,7 +597,6 @@
         updateUI();
         renderCurrentScene();
     });
-    document.getElementById("comboActionBtn").addEventListener("click", () => tryCombo());
 
     renderCurrentScene();
     updateUI();
